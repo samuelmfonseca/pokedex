@@ -4,7 +4,7 @@
 Samuel Maciel Fonseca — Matrícula 22506931
 
 ## Descrição
-Aplicação web que busca e exibe Pokémon utilizando a PokeAPI. Desenvolvida com Node.js (servidor estático) e HTML + CSS + JavaScript puro (frontend), com consumo assíncrono da API para carregar dados em tempo real.
+Aplicação web que busca e exibe Pokémon utilizando a PokeAPI. Desenvolvida com Node.js e HTML + CSS + JavaScript, com consumo assíncrono da API para carregar dados em tempo real.
 
 ## API utilizada
 - **Nome:** PokeAPI
@@ -14,12 +14,12 @@ Aplicação web que busca e exibe Pokémon utilizando a PokeAPI. Desenvolvida co
   - `GET /api/v2/pokemon-species/{id}` — dados de espécie (descrição, geração, cor)
 
 ## Funcionalidades
-- **Busca por nome ou número:** campo de busca com pesquisa em tempo real (debounce) e busca por Enter ou botão.
+- **Busca por nome ou número:** campo de busca com pesquisa em tempo real e busca por Enter ou botão.
 - **Filtros por geração:** botões para filtrar Pokémon da Gen 1 até a Gen 9.
 - **Cards com informações básicas:** imagem oficial, nome, número e tipos do Pokémon.
 - **Modal de detalhes:** ao clicar em um card, exibe estatísticas (HP, ATK, DEF, SP.ATK, SP.DEF, SPEED), altura, peso, experiência base, movimentos e habilidades.
 - **Paginação:** botão "Carregar mais Pokémon" para carregar mais 24 a cada vez.
-- **Tratamento de erros:** mensagens amigáveis para Pokémon não encontrado ou erros de rede (nunca tela quebrada).
+- **Tratamento de erros:** mensagens amigáveis para Pokémon não encontrado ou erros de rede.
 - **Loading:** animação de carregamento durante requisições à API.
 - **Design responsivo:** layout adaptável para desktop, tablet e mobile.
 
