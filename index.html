@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pokédex</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Header -->
+        <header class="header">
+            <div class="header-content">
+                <div class="logo">
+                    <div class="pokeball-icon">
+                        <div class="pokeball-top"></div>
+                        <div class="pokeball-band"></div>
+                        <div class="pokeball-bottom"></div>
+                        <div class="pokeball-center"></div>
+                    </div>
+                    <h1>Pokédex</h1>
+                </div>
+                <p class="subtitle">Descubra todos os Pokémon</p>
+            </div>
+        </header>
+
+        <!-- Search Section -->
+        <section class="search-section">
+            <div class="search-container">
+                <input
+                    type="text"
+                    id="search-input"
+                    class="search-input"
+                    placeholder="Buscar Pokémon por nome ou número..."
+                    autocomplete="off"
+                >
+                <button id="search-btn" class="search-btn">
+                    <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                </button>
+            </div>
+            <div class="filter-bar">
+                <button class="filter-btn active" data-generation="all">Todos</button>
+                <button class="filter-btn" data-generation="1">Gen 1</button>
+                <button class="filter-btn" data-generation="2">Gen 2</button>
+                <button class="filter-btn" data-generation="3">Gen 3</button>
+                <button class="filter-btn" data-generation="4">Gen 4</button>
+                <button class="filter-btn" data-generation="5">Gen 5</button>
+                <button class="filter-btn" data-generation="6">Gen 6</button>
+                <button class="filter-btn" data-generation="7">Gen 7</button>
+                <button class="filter-btn" data-generation="8">Gen 8</button>
+                <button class="filter-btn" data-generation="9">Gen 9</button>
+            </div>
+        </section>
+
+        <!-- Loading -->
+        <div id="loading" class="loading hidden">
+            <div class="loading-pokeball">
+                <div class="pokeball-loading"></div>
+            </div>
+            <p>Carregando...</p>
+        </div>
+
+        <!-- Error -->
+        <div id="error-message" class="error-message hidden">
+            <p id="error-text"></p>
+        </div>
+
+        <!-- Pokemon Grid -->
+        <section id="pokemon-grid" class="pokemon-grid"></section>
+
+        <!-- Load More Button -->
+        <div id="load-more-container" class="load-more-container hidden">
+            <button id="load-more-btn" class="load-more-btn">Carregar mais Pokémon</button>
+        </div>
+
+        <!-- Detail Modal -->
+        <div id="modal-overlay" class="modal-overlay hidden">
+            <div id="modal" class="modal">
+                <button id="modal-close" class="modal-close">&times;</button>
+                <div id="modal-content" class="modal-content"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

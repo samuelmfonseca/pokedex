@@ -1,0 +1,11 @@
+{
+  "name": "pokedex",
+  "version": "1.0.0",
+  "description": "Pokédex - Busca e exibe Pokémon com a PokeAPI",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": ["pokedex", "pokeapi", "pokemon"],
+  "license": "MIT"
+}
