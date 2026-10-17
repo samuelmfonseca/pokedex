@@ -47,7 +47,16 @@ const STAT_NAMES = {
 
 const STAT_KEYS = ['hp', 'attack', 'defense', 'special-attack', 'special-defense', 'speed'];
 
+// Backend próprio (Rust + Axum + SQLite). Quando a página é servida pelo
+// próprio backend, a API fica na mesma origem; no GitHub Pages ou abrindo o
+// arquivo direto, aponta para o backend local.
+const TEAM_API = (location.protocol === 'file:' || location.hostname.endsWith('github.io')
+  ? 'http://localhost:8080'
+  : '') + '/api/team';
+const MAX_TEAM_SIZE = 6;
+
 // ===== State =====
+let team = [];
 let allPokemon = [];
 let currentList = [];
 let currentPage = 0;
@@ -68,6 +77,9 @@ const modalOverlay = document.getElementById('modal-overlay');
 const modalContent = document.getElementById('modal-content');
 const modalClose = document.getElementById('modal-close');
 const filterBtns = document.querySelectorAll('.filter-btn');
+const teamSlots = document.getElementById('team-slots');
+const teamCount = document.getElementById('team-count');
+const teamStatus = document.getElementById('team-status');
 
 // ===== Utility Functions =====
 function formatId(id) {
@@ -180,6 +192,132 @@ async function loadPokemonList(rangeStart, rangeEnd) {
   return results.filter(Boolean);
 }
 
+// ===== Team (CRUD no backend) =====
+async function teamRequest(path, options = {}) {
+  const res = await fetch(TEAM_API + path, {
+    headers: { 'Content-Type': 'application/json' },
+    ...options,
+  });
+  if (!res.ok) {
+    const body = await res.json().catch(() => ({}));
+    throw new Error(body.error || `Erro ${res.status} ao falar com o servidor`);
+  }
+  return res.status === 204 ? null : res.json();
+}
+
+function setTeamStatus(msg, isError = false) {
+  teamStatus.textContent = msg;
+  teamStatus.classList.toggle('team-status-error', isError);
+}
+
+// READ
+async function loadTeam() {
+  try {
+    team = await teamRequest('');
+    setTeamStatus(team.length ? 'Clique em um Pokémon para ver detalhes.' : 'Seu time está vazio. Abra um Pokémon e clique em "Adicionar ao time".');
+  } catch (err) {
+    team = [];
+    setTeamStatus('Não foi possível carregar o time: backend indisponível.', true);
+  }
+  renderTeam();
+}
+
+// CREATE
+async function addToTeam(pokemon) {
+  try {
+    await teamRequest('', {
+      method: 'POST',
+      body: JSON.stringify({
+        pokemon_id: pokemon.id,
+        name: pokemon.name,
+        types: pokemon.types,
+        sprite: pokemon.officialArtwork || getPokemonSprite(pokemon.id),
+      }),
+    });
+    await loadTeam();
+    setTeamStatus(`${capitalize(pokemon.name)} entrou para o time!`);
+    return true;
+  } catch (err) {
+    setTeamStatus(err.message, true);
+    return false;
+  }
+}
+
+// UPDATE (bônus)
+async function renameMember(member) {
+  const input = document.querySelector(`.team-nickname[data-id="${member.id}"]`);
+  const nickname = input.value.trim();
+  if (nickname === (member.nickname || '')) return;
+  try {
+    await teamRequest(`/${member.id}`, {
+      method: 'PATCH',
+      body: JSON.stringify({ nickname: nickname || null }),
+    });
+    await loadTeam();
+    setTeamStatus('Apelido salvo.');
+  } catch (err) {
+    setTeamStatus(err.message, true);
+  }
+}
+
+// DELETE
+async function removeFromTeam(member) {
+  try {
+    await teamRequest(`/${member.id}`, { method: 'DELETE' });
+    await loadTeam();
+    setTeamStatus(`${capitalize(member.name)} saiu do time.`);
+  } catch (err) {
+    setTeamStatus(err.message, true);
+  }
+}
+
+function createTeamSlot(member) {
+  const slot = document.createElement('div');
+  slot.className = 'team-slot filled';
+  const bgColor = getTypeColor(member.types[0]);
+  slot.style.setProperty('--slot-color', bgColor);
+
+  slot.innerHTML = `
+    <button class="team-remove" title="Remover do time" aria-label="Remover do time">&times;</button>
+    <img class="team-image" src="${member.sprite || getPokemonSprite(member.pokemon_id)}" alt="">
+    <div class="team-name"></div>
+    <input class="team-nickname" data-id="${member.id}" maxlength="20" placeholder="Apelido">
+    <div class="card-types">
+      ${member.types.map(t => `<span class="type-badge" style="background: ${getTypeColor(t)}">${t}</span>`).join('')}
+    </div>
+  `;
+  slot.querySelector('.team-name').textContent = `${formatId(member.pokemon_id)} ${capitalize(member.name)}`;
+
+  const nicknameInput = slot.querySelector('.team-nickname');
+  nicknameInput.value = member.nickname || '';
+  nicknameInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') nicknameInput.blur();
+  });
+  nicknameInput.addEventListener('blur', () => renameMember(member));
+
+  slot.querySelector('.team-remove').addEventListener('click', () => removeFromTeam(member));
+  slot.querySelector('.team-image').addEventListener('click', async () => {
+    try {
+      openModal(await fetchPokemonBasic(member.pokemon_id));
+    } catch (err) {
+      setTeamStatus(err.message, true);
+    }
+  });
+  return slot;
+}
+
+function renderTeam() {
+  teamSlots.innerHTML = '';
+  team.forEach(member => teamSlots.appendChild(createTeamSlot(member)));
+  for (let i = team.length; i < MAX_TEAM_SIZE; i++) {
+    const empty = document.createElement('div');
+    empty.className = 'team-slot empty';
+    empty.innerHTML = '<div class="pokeball-icon team-empty-ball"><div class="pokeball-top"></div><div class="pokeball-band"></div><div class="pokeball-bottom"></div><div class="pokeball-center"></div></div><span>Vazio</span>';
+    teamSlots.appendChild(empty);
+  }
+  teamCount.textContent = `${team.length}/${MAX_TEAM_SIZE}`;
+}
+
 // ===== Card Rendering =====
 function createPokemonCard(pokemon) {
   const card = document.createElement('div');
@@ -276,6 +414,7 @@ function openModal(pokemon) {
           <span class="type-badge" style="background: ${getTypeColor(t)}">${t}</span>
         `).join('')}
       </div>
+      <button id="add-team-btn" class="add-team-btn"></button>
     </div>
     <div class="modal-details">
       <div class="modal-section">
@@ -315,6 +454,17 @@ function openModal(pokemon) {
       ` : ''}
     </div>
   `;
+
+  const addTeamBtn = document.getElementById('add-team-btn');
+  const teamFull = team.length >= MAX_TEAM_SIZE;
+  addTeamBtn.textContent = teamFull ? 'Time completo (6/6)' : '+ Adicionar ao time';
+  addTeamBtn.disabled = teamFull;
+  addTeamBtn.addEventListener('click', async () => {
+    addTeamBtn.disabled = true;
+    addTeamBtn.textContent = 'Salvando...';
+    const ok = await addToTeam(pokemon);
+    addTeamBtn.textContent = ok ? '✓ No time!' : 'Erro — veja o status do time';
+  });
 
   modalOverlay.classList.remove('hidden');
   document.body.style.overflow = 'hidden';
@@ -491,5 +641,6 @@ document.addEventListener('keydown', (e) => {
 
 // ===== Init =====
 document.addEventListener('DOMContentLoaded', () => {
+  loadTeam();
   loadInitial();
 });
