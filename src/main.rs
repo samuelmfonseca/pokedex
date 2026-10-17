@@ -12,7 +12,7 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
     response::{IntoResponse, Response},
-    routing::{get, patch},
+    routing::{get, patch, put},
     Json, Router,
 };
 use rusqlite::{params, Connection, OptionalExtension, Row};
@@ -36,6 +36,7 @@ struct TeamMember {
     nickname: Option<String>,
     types: Vec<String>,
     sprite: Option<String>,
+    position: i64,
     created_at: String,
 }
 
@@ -52,6 +53,11 @@ struct NewMember {
 #[derive(Deserialize)]
 struct UpdateMember {
     nickname: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct TeamOrder {
+    ids: Vec<i64>,
 }
 
 // ===== Erros =====
@@ -104,9 +110,23 @@ fn open_database(path: &str) -> rusqlite::Result<Connection> {
              nickname   TEXT,
              types      TEXT    NOT NULL DEFAULT '[]',
              sprite     TEXT,
+             position   INTEGER NOT NULL DEFAULT 0,
              created_at TEXT    NOT NULL DEFAULT (datetime('now'))
          );",
     )?;
+
+    // Migração: bancos criados antes da reordenação não têm a coluna `position`.
+    let has_position: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM pragma_table_info('team') WHERE name = 'position'",
+        [],
+        |r| r.get(0),
+    )?;
+    if !has_position {
+        conn.execute_batch(
+            "ALTER TABLE team ADD COLUMN position INTEGER NOT NULL DEFAULT 0;
+             UPDATE team SET position = id;",
+        )?;
+    }
     Ok(conn)
 }
 
@@ -119,6 +139,7 @@ fn row_to_member(row: &Row) -> rusqlite::Result<TeamMember> {
         nickname: row.get("nickname")?,
         types: serde_json::from_str(&types_json).unwrap_or_default(),
         sprite: row.get("sprite")?,
+        position: row.get("position")?,
         created_at: row.get("created_at")?,
     })
 }
@@ -147,7 +168,7 @@ async fn health() -> &'static str {
 // READ — lista o time
 async fn list_team(State(state): State<AppState>) -> ApiResult<Json<Vec<TeamMember>>> {
     let conn = state.db.lock().unwrap();
-    let mut stmt = conn.prepare("SELECT * FROM team ORDER BY created_at, id")?;
+    let mut stmt = conn.prepare("SELECT * FROM team ORDER BY position, id")?;
     let team = stmt
         .query_map([], row_to_member)?
         .collect::<rusqlite::Result<Vec<_>>>()?;
@@ -172,9 +193,19 @@ async fn add_member(
         )));
     }
 
+    let already_in_team: bool = conn.query_row(
+        "SELECT COUNT(*) > 0 FROM team WHERE pokemon_id = ?1",
+        [input.pokemon_id],
+        |r| r.get(0),
+    )?;
+    if already_in_team {
+        return Err(ApiError::Conflict("Esse Pokémon já está no time.".into()));
+    }
+
     let types_json = serde_json::to_string(&input.types).unwrap_or_else(|_| "[]".into());
     conn.execute(
-        "INSERT INTO team (pokemon_id, name, nickname, types, sprite) VALUES (?1, ?2, ?3, ?4, ?5)",
+        "INSERT INTO team (pokemon_id, name, nickname, types, sprite, position)
+         VALUES (?1, ?2, ?3, ?4, ?5, (SELECT COALESCE(MAX(position), 0) + 1 FROM team))",
         params![input.pokemon_id, input.name.trim(), nickname, types_json, input.sprite],
     )?;
     let member = find_member(&conn, conn.last_insert_rowid())?.ok_or(ApiError::NotFound)?;
@@ -198,6 +229,38 @@ async fn update_member(
     }
     let member = find_member(&conn, id)?.ok_or(ApiError::NotFound)?;
     Ok(Json(member))
+}
+
+// UPDATE — salva a nova ordem do time (arrastar e soltar)
+async fn reorder_team(
+    State(state): State<AppState>,
+    Json(input): Json<TeamOrder>,
+) -> ApiResult<Json<Vec<TeamMember>>> {
+    {
+        let mut conn = state.db.lock().unwrap();
+        let mut current: Vec<i64> = conn
+            .prepare("SELECT id FROM team")?
+            .query_map([], |r| r.get(0))?
+            .collect::<rusqlite::Result<_>>()?;
+        let mut requested = input.ids.clone();
+        current.sort_unstable();
+        requested.sort_unstable();
+        if current != requested {
+            return Err(ApiError::BadRequest(
+                "A nova ordem deve conter exatamente os Pokémon do time".into(),
+            ));
+        }
+
+        let tx = conn.transaction()?;
+        for (index, id) in input.ids.iter().enumerate() {
+            tx.execute(
+                "UPDATE team SET position = ?1 WHERE id = ?2",
+                params![index as i64 + 1, id],
+            )?;
+        }
+        tx.commit()?;
+    }
+    list_team(State(state)).await
 }
 
 // DELETE — remove um Pokémon do time
@@ -224,6 +287,7 @@ async fn main() {
     let api = Router::new()
         .route("/health", get(health))
         .route("/team", get(list_team).post(add_member))
+        .route("/team/order", put(reorder_team))
         .route("/team/{id}", patch(update_member).delete(remove_member))
         .with_state(state);
 

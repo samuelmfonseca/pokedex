@@ -34,25 +34,30 @@ Aplicação web que busca e exibe Pokémon utilizando a PokeAPI e permite **mont
 | `nickname`   | TEXT    | Apelido dado pelo treinador (opcional)      |
 | `types`      | TEXT    | Tipos em JSON, ex.: `["fire","flying"]`     |
 | `sprite`     | TEXT    | URL da imagem oficial                       |
+| `position`   | INTEGER | Ordem do Pokémon no time (arrastar e soltar) |
 | `created_at` | TEXT    | Data/hora em que entrou no time             |
 
 ### API REST
 | Método   | Rota             | Operação                                   |
 |----------|------------------|--------------------------------------------|
 | `GET`    | `/api/team`      | **Read** — lista o time                    |
-| `POST`   | `/api/team`      | **Create** — adiciona (máx. 6; senão 409)  |
+| `POST`   | `/api/team`      | **Create** — adiciona (máx. 6, sem repetir; senão 409) |
 | `PATCH`  | `/api/team/{id}` | **Update** (bônus) — altera o apelido      |
+| `PUT`    | `/api/team/order`| **Update** (bônus) — salva a nova ordem    |
 | `DELETE` | `/api/team/{id}` | **Delete** — remove do time                |
 | `GET`    | `/api/health`    | Health check                               |
 
 ### Na interface
 - Seção **"Meu Time"** no topo, carregada do banco ao abrir a página, com 6 slots.
 - Botão **"+ Adicionar ao time"** no modal de detalhes de cada Pokémon.
+- **Arrastar e soltar:** arraste um card da Pokédex até o time para adicioná-lo (o time fica fixo no topo da tela durante o arraste) ou arraste os membros do time entre si para reordenar. A ordem é salva no banco.
+- Cada Pokémon aparece em **um lugar só**: ao entrar no time, o card sai do grid; ao ser removido do time, o card volta ao grid. Por isso o time não aceita Pokémon repetidos (a API responde 409).
 - Campo de **apelido** em cada membro (salva ao sair do campo ou apertar Enter).
 - Botão **×** para remover o Pokémon do time.
 
 ### Limitações conhecidas
 - Não há login: existe um único time compartilhado por todos que acessam o mesmo servidor.
+- O arrastar e soltar usa a API nativa de *drag and drop* do HTML5, que não funciona em celulares/tablets com toque. Nesses aparelhos, use o botão "Adicionar ao time".
 - A API aceita CORS de qualquer origem e não tem autenticação (aceitável nesta etapa).
 - O **GitHub Pages** hospeda apenas arquivos estáticos e não roda o backend. A versão no Pages tenta usar um backend em `http://localhost:8080`; ou seja, o time funciona se o container estiver rodando na máquina de quem acessa.
 - Sem volume (`-v`), o banco fica dentro do container: os dados sobrevivem a `docker stop`/`docker start`, mas se perdem com `docker rm`.
@@ -68,7 +73,8 @@ Aplicação web que busca e exibe Pokémon utilizando a PokeAPI e permite **mont
 - Cards com imagem oficial, nome, número e tipos
 - Modal de detalhes com estatísticas, informações e habilidades
 - Paginação com "Carregar mais Pokémon"
-- **Time de Pokémon persistido no SQLite** (criar, listar, renomear, excluir)
+- **Time de Pokémon persistido no SQLite** (criar, listar, renomear, reordenar, excluir)
+- **Arrastar e soltar** cards para montar e organizar o time
 - Tratamento de erros, loading e design responsivo
 
 ## Como executar localmente (sem Docker)

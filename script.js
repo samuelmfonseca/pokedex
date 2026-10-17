@@ -54,6 +54,9 @@ const TEAM_API = (location.protocol === 'file:' || location.hostname.endsWith('g
   ? 'http://localhost:8080'
   : '') + '/api/team';
 const MAX_TEAM_SIZE = 6;
+// Tipos usados no dataTransfer para diferenciar o que está sendo arrastado
+const DRAG_POKEMON = 'application/x-pokemon';
+const DRAG_MEMBER = 'application/x-team-member';
 
 // ===== State =====
 let team = [];
@@ -214,7 +217,9 @@ function setTeamStatus(msg, isError = false) {
 async function loadTeam() {
   try {
     team = await teamRequest('');
-    setTeamStatus(team.length ? 'Clique em um Pokémon para ver detalhes.' : 'Seu time está vazio. Abra um Pokémon e clique em "Adicionar ao time".');
+    setTeamStatus(team.length
+      ? 'Arraste para reordenar ou solte um card da Pokédex aqui para adicionar.'
+      : 'Seu time está vazio. Arraste um card da Pokédex para cá ou use "Adicionar ao time".');
   } catch (err) {
     team = [];
     setTeamStatus('Não foi possível carregar o time: backend indisponível.', true);
@@ -260,6 +265,27 @@ async function renameMember(member) {
   }
 }
 
+// UPDATE — nova ordem após arrastar dentro do time
+async function reorderTeam(fromIndex, toIndex) {
+  if (fromIndex === toIndex) return;
+  const previous = team.slice();
+  const [moved] = team.splice(fromIndex, 1);
+  team.splice(toIndex, 0, moved);
+  renderTeam(); // atualiza na hora; desfaz se o servidor recusar
+  try {
+    team = await teamRequest('/order', {
+      method: 'PUT',
+      body: JSON.stringify({ ids: team.map(m => m.id) }),
+    });
+    renderTeam();
+    setTeamStatus('Ordem do time salva.');
+  } catch (err) {
+    team = previous;
+    renderTeam();
+    setTeamStatus(err.message, true);
+  }
+}
+
 // DELETE
 async function removeFromTeam(member) {
   try {
@@ -279,7 +305,7 @@ function createTeamSlot(member) {
 
   slot.innerHTML = `
     <button class="team-remove" title="Remover do time" aria-label="Remover do time">&times;</button>
-    <img class="team-image" src="${member.sprite || getPokemonSprite(member.pokemon_id)}" alt="">
+    <img class="team-image" src="${member.sprite || getPokemonSprite(member.pokemon_id)}" alt="" draggable="false">
     <div class="team-name"></div>
     <input class="team-nickname" data-id="${member.id}" maxlength="20" placeholder="Apelido">
     <div class="card-types">
@@ -295,6 +321,19 @@ function createTeamSlot(member) {
   });
   nicknameInput.addEventListener('blur', () => renameMember(member));
 
+  // Sem isso, selecionar texto no campo de apelido iniciaria um arraste
+  nicknameInput.addEventListener('pointerdown', () => { slot.draggable = false; });
+  nicknameInput.addEventListener('pointerup', () => { slot.draggable = true; });
+  nicknameInput.addEventListener('pointerleave', () => { slot.draggable = true; });
+
+  slot.draggable = true;
+  slot.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData(DRAG_MEMBER, String(member.id));
+    e.dataTransfer.effectAllowed = 'move';
+    slot.classList.add('dragging');
+  });
+  slot.addEventListener('dragend', () => slot.classList.remove('dragging'));
+
   slot.querySelector('.team-remove').addEventListener('click', () => removeFromTeam(member));
   slot.querySelector('.team-image').addEventListener('click', async () => {
     try {
@@ -306,16 +345,93 @@ function createTeamSlot(member) {
   return slot;
 }
 
+function isInTeam(pokemonId) {
+  return team.some(m => m.pokemon_id === pokemonId);
+}
+
+// Pokémon que estão no time saem do grid; ao sair do time, o card volta
+function syncGridWithTeam() {
+  const cards = pokemonGrid.querySelectorAll('.pokemon-card');
+  cards.forEach(card => {
+    const inTeam = isInTeam(Number(card.dataset.id));
+    const wasHidden = card.classList.contains('hidden');
+    card.classList.toggle('hidden', inTeam);
+    if (wasHidden && !inTeam) {
+      card.classList.remove('card-return');
+      void card.offsetWidth; // reinicia a animação
+      card.classList.add('card-return');
+    }
+  });
+
+  const allInTeam = cards.length > 0 && [...cards].every(c => c.classList.contains('hidden'));
+  if (allInTeam) {
+    showError('Todos os Pokémon desta lista já estão no seu time.');
+  } else if (errorText.textContent === 'Todos os Pokémon desta lista já estão no seu time.') {
+    hideError();
+  }
+}
+
+function isTeamDrag(e) {
+  const types = e.dataTransfer.types;
+  return types.includes(DRAG_POKEMON) || types.includes(DRAG_MEMBER);
+}
+
+// Cada slot (cheio ou vazio) aceita cards da Pokédex e membros do time
+function makeDropTarget(slot, index) {
+  slot.dataset.index = index;
+  slot.addEventListener('dragover', (e) => {
+    if (!isTeamDrag(e)) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = e.dataTransfer.types.includes(DRAG_MEMBER) ? 'move' : 'copy';
+    slot.classList.add('drag-over');
+  });
+  slot.addEventListener('dragleave', (e) => {
+    if (!slot.contains(e.relatedTarget)) slot.classList.remove('drag-over');
+  });
+  slot.addEventListener('drop', (e) => {
+    e.preventDefault();
+    slot.classList.remove('drag-over');
+
+    const memberId = e.dataTransfer.getData(DRAG_MEMBER);
+    if (memberId) {
+      const fromIndex = team.findIndex(m => m.id === Number(memberId));
+      // Soltar em um slot vazio move para o fim do time
+      const toIndex = Math.min(index, team.length - 1);
+      if (fromIndex !== -1) reorderTeam(fromIndex, toIndex);
+      return;
+    }
+
+    const pokemonData = e.dataTransfer.getData(DRAG_POKEMON);
+    if (pokemonData) {
+      if (team.length >= MAX_TEAM_SIZE) {
+        setTeamStatus('O time já tem 6 Pokémon. Remova um para adicionar outro.', true);
+        return;
+      }
+      const pokemon = JSON.parse(pokemonData);
+      // Esconde o card na hora; se o servidor recusar, ele volta
+      const card = pokemonGrid.querySelector(`.pokemon-card[data-id="${pokemon.id}"]`);
+      if (card) card.classList.add('hidden');
+      addToTeam(pokemon).then(ok => { if (!ok) syncGridWithTeam(); });
+    }
+  });
+}
+
 function renderTeam() {
   teamSlots.innerHTML = '';
-  team.forEach(member => teamSlots.appendChild(createTeamSlot(member)));
+  team.forEach((member, index) => {
+    const slot = createTeamSlot(member);
+    makeDropTarget(slot, index);
+    teamSlots.appendChild(slot);
+  });
   for (let i = team.length; i < MAX_TEAM_SIZE; i++) {
     const empty = document.createElement('div');
     empty.className = 'team-slot empty';
     empty.innerHTML = '<div class="pokeball-icon team-empty-ball"><div class="pokeball-top"></div><div class="pokeball-band"></div><div class="pokeball-bottom"></div><div class="pokeball-center"></div></div><span>Vazio</span>';
+    makeDropTarget(empty, i);
     teamSlots.appendChild(empty);
   }
   teamCount.textContent = `${team.length}/${MAX_TEAM_SIZE}`;
+  syncGridWithTeam();
 }
 
 // ===== Card Rendering =====
@@ -323,6 +439,7 @@ function createPokemonCard(pokemon) {
   const card = document.createElement('div');
   card.className = 'pokemon-card';
   card.dataset.id = pokemon.id;
+  if (isInTeam(pokemon.id)) card.classList.add('hidden');
 
   const primaryType = pokemon.types[0];
   const bgColor = getTypeColor(primaryType);
@@ -334,7 +451,7 @@ function createPokemonCard(pokemon) {
     <div class="card-header">
       <span class="card-number">${formatId(pokemon.id)}</span>
       <div class="card-image-container">
-        <img class="card-image" src="${imageSrc}" alt="${pokemon.name}" loading="lazy">
+        <img class="card-image" src="${imageSrc}" alt="${pokemon.name}" loading="lazy" draggable="false">
       </div>
     </div>
     <div class="card-info">
@@ -348,6 +465,24 @@ function createPokemonCard(pokemon) {
   `;
 
   card.addEventListener('click', () => openModal(pokemon));
+
+  // Arrastar o card até o time adiciona o Pokémon
+  card.draggable = true;
+  card.addEventListener('dragstart', (e) => {
+    e.dataTransfer.setData(DRAG_POKEMON, JSON.stringify({
+      id: pokemon.id,
+      name: pokemon.name,
+      types: pokemon.types,
+      officialArtwork: pokemon.officialArtwork,
+    }));
+    e.dataTransfer.effectAllowed = 'copy';
+    card.classList.add('dragging');
+    document.body.classList.add('dragging-pokemon');
+  });
+  card.addEventListener('dragend', () => {
+    card.classList.remove('dragging');
+    document.body.classList.remove('dragging-pokemon');
+  });
   return card;
 }
 
@@ -367,6 +502,7 @@ function renderPokemonGrid(pokemonList) {
     const card = createPokemonCard(pokemon);
     pokemonGrid.appendChild(card);
   });
+  syncGridWithTeam();
 }
 
 function appendPokemonGrid(pokemonList) {
@@ -457,8 +593,10 @@ function openModal(pokemon) {
 
   const addTeamBtn = document.getElementById('add-team-btn');
   const teamFull = team.length >= MAX_TEAM_SIZE;
-  addTeamBtn.textContent = teamFull ? 'Time completo (6/6)' : '+ Adicionar ao time';
-  addTeamBtn.disabled = teamFull;
+  const alreadyInTeam = isInTeam(pokemon.id);
+  addTeamBtn.textContent = alreadyInTeam ? '✓ Já está no time'
+    : teamFull ? 'Time completo (6/6)' : '+ Adicionar ao time';
+  addTeamBtn.disabled = teamFull || alreadyInTeam;
   addTeamBtn.addEventListener('click', async () => {
     addTeamBtn.disabled = true;
     addTeamBtn.textContent = 'Salvando...';

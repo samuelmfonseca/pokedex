@@ -783,6 +783,57 @@ body {
     cursor: default;
 }
 
+/* ===== Arrastar e soltar ===== */
+.pokemon-card[draggable="true"],
+.team-slot.filled {
+    cursor: grab;
+}
+
+.pokemon-card.dragging,
+.team-slot.dragging {
+    opacity: 0.4;
+}
+
+.team-slot.drag-over {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 18px rgba(239, 83, 80, 0.5);
+}
+
+.team-slot.empty.drag-over {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+/* Card voltando para o grid ao sair do time */
+.pokemon-card.card-return {
+    animation: card-return 0.45s ease-out;
+}
+
+@keyframes card-return {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Enquanto um card da Pokédex é arrastado, o time fica fixo no topo da tela */
+body.dragging-pokemon .team-section {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 50;
+    border-color: var(--accent);
+    box-shadow: 0 8px 32px var(--shadow);
+}
+
+body.dragging-pokemon .team-slot.empty {
+    border-color: var(--accent);
+}
+
 @media (max-width: 900px) {
     .team-slots {
         grid-template-columns: repeat(3, 1fr);
