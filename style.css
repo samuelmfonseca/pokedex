@@ -626,6 +626,226 @@ body {
     line-height: 1.5;
 }
 
+/* ===== Meu Time ===== */
+.team-section {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 20px;
+    margin-bottom: 24px;
+}
+
+.team-header {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+
+.team-header h2 {
+    font-size: 1.3rem;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.team-count {
+    font-size: 0.8rem;
+    font-weight: 700;
+    padding: 2px 10px;
+    border-radius: 12px;
+    background: var(--accent);
+    color: white;
+}
+
+.team-status {
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+}
+
+.team-status-error {
+    color: #ff8a80;
+}
+
+.team-slots {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 12px;
+}
+
+.team-slot {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 6px;
+    padding: 12px 8px;
+    border-radius: var(--radius);
+    min-height: 190px;
+    min-width: 0;
+}
+
+.team-slot.filled {
+    background: radial-gradient(circle at 50% 25%, var(--slot-color), transparent 70%), var(--bg-card);
+    border: 1px solid var(--border);
+}
+
+.team-slot.empty {
+    justify-content: center;
+    border: 2px dashed var(--border);
+    color: var(--text-secondary);
+    font-size: 0.85rem;
+}
+
+.team-empty-ball {
+    opacity: 0.25;
+    box-shadow: none;
+}
+
+.team-image {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    cursor: pointer;
+    filter: drop-shadow(0 4px 8px var(--shadow));
+    transition: transform var(--transition);
+}
+
+.team-image:hover {
+    transform: scale(1.08);
+}
+
+.team-name {
+    font-weight: 700;
+    font-size: 0.85rem;
+    text-align: center;
+}
+
+.team-nickname {
+    width: 100%;
+    padding: 4px 8px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--bg-primary);
+    color: var(--text-primary);
+    font-size: 0.8rem;
+    text-align: center;
+}
+
+.team-nickname:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+.team-remove {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    width: 26px;
+    height: 26px;
+    border: none;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.4);
+    color: white;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition: background var(--transition);
+}
+
+.team-remove:hover {
+    background: var(--accent);
+}
+
+.add-team-btn {
+    margin-top: 16px;
+    padding: 10px 28px;
+    font-size: 0.95rem;
+    font-weight: 600;
+    border: none;
+    border-radius: var(--radius);
+    background: linear-gradient(135deg, var(--accent), #ff8a65);
+    color: white;
+    cursor: pointer;
+    position: relative;
+    z-index: 1;
+    transition: transform var(--transition);
+}
+
+.add-team-btn:hover:not(:disabled) {
+    transform: translateY(-2px);
+}
+
+.add-team-btn:disabled {
+    opacity: 0.6;
+    cursor: default;
+}
+
+/* ===== Arrastar e soltar ===== */
+.pokemon-card[draggable="true"],
+.team-slot.filled {
+    cursor: grab;
+}
+
+.pokemon-card.dragging,
+.team-slot.dragging {
+    opacity: 0.4;
+}
+
+.team-slot.drag-over {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+    box-shadow: 0 0 18px rgba(239, 83, 80, 0.5);
+}
+
+.team-slot.empty.drag-over {
+    border-color: var(--accent);
+    color: var(--text-primary);
+}
+
+/* Card voltando para o grid ao sair do time */
+.pokemon-card.card-return {
+    animation: card-return 0.45s ease-out;
+}
+
+@keyframes card-return {
+    from {
+        opacity: 0;
+        transform: scale(0.85);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+/* Enquanto um card da Pokédex é arrastado, o time fica fixo no topo da tela */
+body.dragging-pokemon .team-section {
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    z-index: 50;
+    border-color: var(--accent);
+    box-shadow: 0 8px 32px var(--shadow);
+}
+
+body.dragging-pokemon .team-slot.empty {
+    border-color: var(--accent);
+}
+
+@media (max-width: 900px) {
+    .team-slots {
+        grid-template-columns: repeat(3, 1fr);
+    }
+}
+
+@media (max-width: 480px) {
+    .team-slots {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
 /* ===== Hidden Utility ===== */
 .hidden {
     display: none !important;

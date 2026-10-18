@@ -1,0 +1,23 @@
+# Versionamento e editor
+.git
+.gitignore
+.vscode
+.idea
+
+# Build local do Rust (gigabytes — é recompilado dentro da imagem)
+target
+
+# Banco local: o container cria o próprio
+data
+*.db
+*.db-*
+
+# Documentação e evidências
+README.md
+docs
+*.md
+*.png
+
+# Rascunhos
+*.log
+*.tmp
