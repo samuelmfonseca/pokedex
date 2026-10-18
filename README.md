@@ -6,15 +6,15 @@ Samuel Maciel Fonseca — Matrícula 22506931
 ## Links
 1. **Repositório GitHub:** https://github.com/samuelmfonseca/pokedex
 2. **Aplicação no GitHub Pages:** https://samuelmfonseca.github.io/pokedex/
-3. **Docker Hub:** https://hub.docker.com/r/SEU-USUARIO-DOCKERHUB/bootcamp2-app
+3. **Docker Hub:** https://hub.docker.com/r/samuelmacielfonseca/bootcamp2-app
 
 ## Rodar com um único comando (avaliador)
 ```bash
-docker run -d -p 8080:80 SEU-USUARIO-DOCKERHUB/bootcamp2-app:1.1
+docker run -d -p 8080:80 samuelmacielfonseca/bootcamp2-app:1.1
 ```
 Abra **http://localhost:8080**. Para o banco sobreviver também à remoção do container, use um volume:
 ```bash
-docker run -d -p 8080:80 -v pokedex-data:/app/data SEU-USUARIO-DOCKERHUB/bootcamp2-app:1.1
+docker run -d -p 8080:80 -v pokedex-data:/app/data samuelmacielfonseca/bootcamp2-app:1.1
 ```
 
 ## Descrição
@@ -96,8 +96,8 @@ docker run -d -p 8080:80 --name meu-app bootcamp2-app
 
 # Publicar
 docker login
-docker tag bootcamp2-app SEU-USUARIO-DOCKERHUB/bootcamp2-app:1.0
-docker push SEU-USUARIO-DOCKERHUB/bootcamp2-app:1.0
+docker tag bootcamp2-app samuelmacielfonseca/bootcamp2-app:1.0
+docker push samuelmacielfonseca/bootcamp2-app:1.0
 ```
 
 ## Sidequests
@@ -106,19 +106,19 @@ docker push SEU-USUARIO-DOCKERHUB/bootcamp2-app:1.0
 O `.dockerignore` exclui `.git`, `target/` (build local do Rust, que pode passar de 1 GB), o banco local `data/`, o `README.md` e as imagens de evidência. Isso deixa o build mais rápido, porque o Docker envia ao daemon um *contexto* bem menor e não invalida o cache quando só a documentação muda. Também evita que arquivos desnecessários ou sensíveis (histórico git, banco com dados locais) acabem dentro da imagem.
 
 ### SQ2 · Versionamento de imagem
-- `1.0`: primeira versão funcional (Pokédex + time salvo no SQLite)
-- `1.1`: melhoria com apelidos editáveis (update) e build multi-stage com cache de dependências
+- `1.0`: primeira versão funcional (Pokédex + time salvo no SQLite: adicionar, listar, apelido e remover)
+- `1.1`: melhoria com arrastar e soltar (cards da Pokédex → time, reordenação salva no banco) e cards que saem do grid ao entrar no time
 - `latest`: aponta para a versão mais recente
 
 ```bash
-docker tag bootcamp2-app SEU-USUARIO-DOCKERHUB/bootcamp2-app:1.1
-docker tag bootcamp2-app SEU-USUARIO-DOCKERHUB/bootcamp2-app:latest
-docker push SEU-USUARIO-DOCKERHUB/bootcamp2-app:1.1
-docker push SEU-USUARIO-DOCKERHUB/bootcamp2-app:latest
+docker tag bootcamp2-app samuelmacielfonseca/bootcamp2-app:1.1
+docker tag bootcamp2-app samuelmacielfonseca/bootcamp2-app:latest
+docker push samuelmacielfonseca/bootcamp2-app:1.1
+docker push samuelmacielfonseca/bootcamp2-app:latest
 ```
 
 ### SQ3 · Descrição no Docker Hub
-O *overview* do repositório no Docker Hub contém o que é a aplicação, o comando `docker run -d -p 8080:80 SEU-USUARIO-DOCKERHUB/bootcamp2-app:1.1` e o link para este repositório no GitHub.
+O *overview* do repositório no Docker Hub contém o que é a aplicação, o comando `docker run -d -p 8080:80 samuelmacielfonseca/bootcamp2-app:1.1` e o link para este repositório no GitHub.
 
 ### SQ4 · Explorando a orquestração
 Dois containers rodando ao mesmo tempo, nas portas 8080 e 8081:
