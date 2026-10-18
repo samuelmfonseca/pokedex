@@ -8,7 +8,7 @@ Samuel Maciel Fonseca — Matrícula 22506931
 2. **Aplicação no GitHub Pages:** https://samuelmfonseca.github.io/pokedex/
 3. **Docker Hub:** https://hub.docker.com/r/samuelmacielfonseca/bootcamp2-app
 
-## Rodar com um único comando (avaliador)
+## Rodar com um único comando
 ```bash
 docker run -d -p 8080:80 samuelmacielfonseca/bootcamp2-app:1.1
 ```
@@ -21,46 +21,9 @@ docker run -d -p 8080:80 -v pokedex-data:/app/data samuelmacielfonseca/bootcamp2
 Aplicação web que busca e exibe Pokémon utilizando a PokeAPI e permite **montar e salvar um time de até 6 Pokémon**. O frontend é HTML + CSS + JavaScript puro; o backend próprio é escrito em **Rust com Axum** e persiste o time em um banco **SQLite**.
 
 ## Persistência de dados (Etapa 02)
-- **Banco escolhido:** SQLite (arquivo `data/pokedex.db`; no container, `/app/data/pokedex.db`), acessado pela crate `rusqlite`. É um banco SQL real em disco: o time continua lá depois de fechar o navegador, recarregar a página ou reiniciar o servidor.
+- **Banco escolhido:** SQLite arquivo `data/pokedex.db`; no container, `/app/data/pokedex.db`, acessado pela crate `rusqlite`. É um banco SQL real em disco: o time continua lá depois de fechar o navegador, recarregar a página ou reiniciar o servidor.
 - **Backend:** Rust + Axum (`src/main.rs`), que serve o frontend e a API REST.
 - **O que é salvo:** cada Pokémon adicionado ao time, com seu apelido opcional.
-
-### Estrutura da tabela `team`
-| Coluna       | Tipo    | Descrição                                   |
-|--------------|---------|---------------------------------------------|
-| `id`         | INTEGER | Chave primária (autoincremento)             |
-| `pokemon_id` | INTEGER | Número do Pokémon na Pokédex (PokeAPI)      |
-| `name`       | TEXT    | Nome do Pokémon                             |
-| `nickname`   | TEXT    | Apelido dado pelo treinador (opcional)      |
-| `types`      | TEXT    | Tipos em JSON, ex.: `["fire","flying"]`     |
-| `sprite`     | TEXT    | URL da imagem oficial                       |
-| `position`   | INTEGER | Ordem do Pokémon no time (arrastar e soltar) |
-| `created_at` | TEXT    | Data/hora em que entrou no time             |
-
-### API REST
-| Método   | Rota             | Operação                                   |
-|----------|------------------|--------------------------------------------|
-| `GET`    | `/api/team`      | **Read** — lista o time                    |
-| `POST`   | `/api/team`      | **Create** — adiciona (máx. 6, sem repetir; senão 409) |
-| `PATCH`  | `/api/team/{id}` | **Update** (bônus) — altera o apelido      |
-| `PUT`    | `/api/team/order`| **Update** (bônus) — salva a nova ordem    |
-| `DELETE` | `/api/team/{id}` | **Delete** — remove do time                |
-| `GET`    | `/api/health`    | Health check                               |
-
-### Na interface
-- Seção **"Meu Time"** no topo, carregada do banco ao abrir a página, com 6 slots.
-- Botão **"+ Adicionar ao time"** no modal de detalhes de cada Pokémon.
-- **Arrastar e soltar:** arraste um card da Pokédex até o time para adicioná-lo (o time fica fixo no topo da tela durante o arraste) ou arraste os membros do time entre si para reordenar. A ordem é salva no banco.
-- Cada Pokémon aparece em **um lugar só**: ao entrar no time, o card sai do grid; ao ser removido do time, o card volta ao grid. Por isso o time não aceita Pokémon repetidos (a API responde 409).
-- Campo de **apelido** em cada membro (salva ao sair do campo ou apertar Enter).
-- Botão **×** para remover o Pokémon do time.
-
-### Limitações conhecidas
-- Não há login: existe um único time compartilhado por todos que acessam o mesmo servidor.
-- O arrastar e soltar usa a API nativa de *drag and drop* do HTML5, que não funciona em celulares/tablets com toque. Nesses aparelhos, use o botão "Adicionar ao time".
-- A API aceita CORS de qualquer origem e não tem autenticação (aceitável nesta etapa).
-- O **GitHub Pages** hospeda apenas arquivos estáticos e não roda o backend. A versão no Pages tenta usar um backend em `http://localhost:8080`; ou seja, o time funciona se o container estiver rodando na máquina de quem acessa.
-- Sem volume (`-v`), o banco fica dentro do container: os dados sobrevivem a `docker stop`/`docker start`, mas se perdem com `docker rm`.
 
 ## API externa utilizada
 - **Nome:** PokeAPI — https://pokeapi.co/docs/v2
