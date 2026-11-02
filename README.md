@@ -56,7 +56,9 @@ PR que adicionou o CI: [#7](https://github.com/samuelmfonseca/pokedex/pull/7).
 ## Evidências
 ![PR bloqueada pelo CI](docs/ci-bloqueado.png)
 
-*PR com um teste falhando de propósito: o CI fica vermelho e o botão de merge fica bloqueado.* PR: [#9](https://github.com/samuelmfonseca/pokedex/pull/9). PR deste README: [#10](https://github.com/samuelmfonseca/pokedex/pull/10).
+*PR com um teste falhando de propósito: o CI fica vermelho e o botão de merge fica bloqueado.* PR: [#12](https://github.com/samuelmfonseca/pokedex/pull/12).
+
+**O que aprendemos:** a primeira tentativa, [#9](https://github.com/samuelmfonseca/pokedex/pull/9), foi mergeada mesmo com o CI vermelho. O ruleset da `main` existia, mas estava *desativado*, sem branch alvo e sem check obrigatório. O teste quebrado chegou à `main` e o CI da `main` ficou vermelho. A [#11](https://github.com/samuelmfonseca/pokedex/pull/11) restaurou o teste, e o ruleset foi ativado (default branch, 1 aprovação, check `Testes automatizados (cargo test)` obrigatório). Com a proteção ativa, a [#12](https://github.com/samuelmfonseca/pokedex/pull/12) repetiu o teste de fogo e o merge ficou bloqueado. PR do README: [#10](https://github.com/samuelmfonseca/pokedex/pull/10).
 
 ## Conflitos de merge
 Não houve conflitos: as unidades de trabalho tocam arquivos disjuntos (`src/` + `Cargo.*` de um lado; `.github/` + `README.md` + `docs/` do outro).
