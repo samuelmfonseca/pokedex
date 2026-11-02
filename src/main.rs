@@ -395,7 +395,7 @@ mod tests {
 
     #[test]
     fn clean_nickname_rejects_more_than_20_chars() {
-        assert!(matches!(clean_nickname(Some("a".repeat(5))), Err(ApiError::BadRequest(_))));
+        assert!(matches!(clean_nickname(Some("a".repeat(21))), Err(ApiError::BadRequest(_))));
         // conta caracteres, não bytes
         assert!(clean_nickname(Some("é".repeat(20))).is_ok());
     }
