@@ -8,6 +8,65 @@ Samuel Maciel Fonseca — Matrícula 22506931
 2. **Aplicação no GitHub Pages:** https://samuelmfonseca.github.io/pokedex/
 3. **Docker Hub:** https://hub.docker.com/r/samuelmacielfonseca/bootcamp2-app
 
+## Integrantes
+| Nome | Matrícula | Usuário GitHub | Funcionalidade | PR principal |
+|------|-----------|----------------|----------------|--------------|
+| Samuel Maciel Fonseca | 22506931 | `samuelmfonseca` e `taik4` | Backend Rust/Axum + SQLite, testes automatizados, CI | [PR de testes](https://github.com/samuelmfonseca/pokedex/pull/8) |
+
+Samuel é o **único integrante**: as duas contas, `samuelmfonseca` e `taik4`, são dele (`taik4` é a conta da máquina de desenvolvimento). O trabalho foi feito individualmente; as duas contas foram usadas para separar as funcionalidades em branches e PRs diferentes.
+
+### Divisão de funcionalidades
+| Conta GitHub | Funcionalidade |
+|--------------|----------------|
+| `taik4` | Backend Rust/SQLite + testes automatizados |
+| `samuelmfonseca` | CI/GitHub Actions, Docker, README |
+
+## Testes automatizados
+Os 8 testes ficam em `src/main.rs` (`mod tests`) e usam um SQLite em memória (`:memory:`), então não dependem de rede nem de arquivo:
+
+| Teste | O que verifica |
+|-------|----------------|
+| `clean_nickname_trims_and_treats_blank_as_none` | apelido é aparado; apelido só com espaços vira vazio |
+| `clean_nickname_rejects_more_than_20_chars` | apelido com mais de 20 caracteres é rejeitado (conta caracteres, não bytes) |
+| `validate_new_member_rejects_invalid_id_or_blank_name` | `pokemon_id` ≤ 0 ou nome em branco são rejeitados |
+| `same_ids_ignores_order_but_not_content` | a nova ordem do time precisa ter exatamente os mesmos ids |
+| `api_health_returns_ok` | `GET /api/health` responde 200 `ok` |
+| `api_add_list_and_delete_member` | criar (201), listar, excluir (204) e excluir de novo (404) |
+| `api_rejects_duplicate_and_seventh_member` | Pokémon repetido e 7º membro retornam 409 |
+| `api_reorder_requires_exact_ids` | reordenar salva a posição; ids faltando ou sobrando retornam 400 |
+
+Como rodar:
+```bash
+cargo test
+```
+Ou via Docker, sem instalar o Rust:
+```bash
+docker run --rm -v "$PWD":/app -w /app rust:1-slim-bookworm cargo test --locked
+```
+PR com os testes: [#8](https://github.com/samuelmfonseca/pokedex/pull/8).
+
+## Integração contínua (CI)
+O workflow **`CI - Testes`** (`.github/workflows/ci.yml`) roda no GitHub Actions:
+- **Gatilhos:** toda *pull request* e todo *push* na `main`.
+- **Passos:** `actions/checkout`, toolchain Rust `stable`, cache das dependências (`rust-cache`) e `cargo test --locked`.
+- **Proteção da `main`:** a regra de branch exige que o check `testes` passe antes do merge; assim uma PR com teste quebrado fica **bloqueada**.
+
+PR que adicionou o CI: [#7](https://github.com/samuelmfonseca/pokedex/pull/7).
+
+## Evidências
+![PR bloqueada pelo CI](docs/ci-bloqueado.png)
+
+*PR com um teste falhando de propósito: o CI fica vermelho e o botão de merge fica bloqueado.* PR: [#9](https://github.com/samuelmfonseca/pokedex/pull/9). PR deste README: [#10](https://github.com/samuelmfonseca/pokedex/pull/10).
+
+## Conflitos de merge
+Não houve conflitos: as unidades de trabalho tocam arquivos disjuntos (`src/` + `Cargo.*` de um lado; `.github/` + `README.md` + `docs/` do outro).
+
+Regra adotada: uma branch por unidade e `git rebase main` antes de abrir a PR. Se um conflito acontecesse:
+1. `git rebase main` para a branch receber as mudanças da `main`;
+2. editar os arquivos em conflito, resolvendo os marcadores `<<<<<<<`, `=======`, `>>>>>>>`;
+3. `git add <arquivo>` e `git rebase --continue`;
+4. `git push --force-with-lease` para atualizar a PR.
+
 ## Rodar com um único comando
 ```bash
 docker run -d -p 8080:80 samuelmacielfonseca/bootcamp2-app:1.1
@@ -141,5 +200,6 @@ pokedex/
 ├── script.js       # Frontend: PokeAPI, busca, filtros, modal e CRUD do time
 ├── Dockerfile      # Build multi-stage (Rust → Debian slim)
 ├── .dockerignore   # Arquivos fora da imagem
+├── .github/workflows/ci.yml  # CI: roda cargo test em PRs e na main
 └── docs/           # Evidências das sidequests
 ```
